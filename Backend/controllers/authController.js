@@ -1,5 +1,5 @@
 import Joi from "joi";
-import { userLoginService, userRegisterService } from "../services/authServices.js"
+import { userLoginService, userLogoutService, userRegisterService } from "../services/authServices.js"
 
 export const userRegisterController = async (req, res, next) => {
     try {
@@ -14,9 +14,14 @@ export const userRegisterController = async (req, res, next) => {
         }
 
         const { email, password } = req.body
-        await userRegisterService(email, password)
+        const accessToken = await userRegisterService(email, password)
 
-        return res.status(200).json({ message: 'Success' })
+        res.cookie("accessToken", accessToken, {
+            maxAge: 1000 * 60 * 60 * 24,
+            httpOnly: true,
+        });
+
+        return res.status(200).json({ message: 'Success', token: accessToken })
     } catch (error) {
         return next(error)
     }
@@ -35,9 +40,24 @@ export const userLoginController = async (req, res, next) => {
         }
 
         const { email, password } = req.body
-        await userLoginService(email, password)
+        const result = await userLoginService(email, password)
+        console.log(result)
+        res.cookie("accessToken", result.token, {
+            maxAge: 1000 * 60 * 60 * 24,
+            httpOnly: true,
+        });
 
-        return res.status(200).json({ message: 'Success' })
+        return res.status(200).json({ message: 'Success', result: result })
+    } catch (error) {
+        return next(error)
+    }
+}
+
+export const userLogOutController = async (req, res, next) => {
+    try {
+        console.log('cookie', req.cookies.accessToken)
+        await userLogoutService(res)
+        return res.status(200).json({ message: 'Logged out', })
     } catch (error) {
         return next(error)
     }
